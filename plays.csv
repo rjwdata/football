@@ -1,3 +1,6 @@
-Timestamp,TeamSide,Quarter,Down,Distance,YardLine,Formation,PlayType,ResultYards,Success,Notes
-2025-08-18 10:34:00.375827,Offense,1,1,1,1,10,Run,10,True,
-2025-08-18 10:35:19.673472,Offense,1,1,10,11,21,Pass,5,True,
+Timestamp,TeamSide,Quarter,Down,Distance,YardLine,Formation,PlayType,ResultYards,Success,Notes,Personnel,Game,Opponent,Hash
+2025-08-18 10:34:00.375827,Offense,1,1,1.0,1,10,Run,10.0,True,,,,,
+2025-08-18 10:35:19.673472,Offense,1,1,10.0,11,21,Pass,5.0,True,,,,,
+2025-08-18 11:17:21.893394,Offense,1,1,10.0,11,21,Pass,5.0,True,,0.0,,,
+2025-08-18T11:29:59,Offense,1,1,10.0,20,Trips,Run,2.0,False,,11.0,2025-08-18,Wauwatosa,Left
+2025-08-18T11:31:01,Offense,1,2,8.0,22,,Run,7.0,True,,21,2025-08-18,,Left
