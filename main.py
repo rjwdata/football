@@ -21,7 +21,7 @@ class Storage:
     def __init__(self):
         self.columns = [
             "Timestamp","Game","Opponent","TeamSide","Quarter","Down","Distance",
-            "YardLine","Hash","Personnel","Formation","PlayType",
+            "YardLine","Hash","Formation","PlayType",
             "ResultYards","Success","Notes"
         ]
         if USE_GOOGLE_SHEETS:
@@ -113,65 +113,6 @@ def compute_success(down: int, distance: float, gained: float) -> bool:
         return gained >= (distance / 2.0)
     return gained >= distance  # 3rd / 4th
 
-def parse_personnel(tag: str):
-    s = str(tag).strip()
-    if not s or not s.isdigit():
-        return 1, 1, 3  # safe default 11
-    if len(s) == 1:
-        s += "0"
-    rb = int(s[0])
-    te = int(s[1])
-    wr = max(0, 5 - (rb + te))
-    return rb, te, wr
-
-def draw_personnel_diagram(tag: str):
-    rb, te, wr = parse_personnel(tag)
-    fig, ax = plt.subplots(figsize=(6, 3.6))
-    ax.set_xlim(0, 100); ax.set_ylim(0, 53.3); ax.axis("off")
-    # hashes
-    for y in [18.2, 35.1]:
-        ax.plot([10, 90], [y, y], linewidth=1, alpha=0.2)
-    mid = 26.65
-
-    # OL
-    for x in np.linspace(44, 56, 5):
-        ax.scatter(x, mid, s=220, edgecolors="black", facecolors="white")
-    ax.text(50, mid+6, "OL", ha="center", va="bottom")
-
-    # QB
-    ax.scatter(50, 21, s=220, edgecolors="black", facecolors="white")
-    ax.text(50, 21-3, "QB", ha="center", va="top")
-
-    # TEs
-    te_spots = []
-    if te >= 1: te_spots.append((58, mid+4.5))
-    if te >= 2: te_spots.append((42, mid+4.5))
-    for i, (x, y) in enumerate(te_spots):
-        ax.scatter(x, y, s=220, edgecolors="black", facecolors="white")
-        ax.text(x, y+2.5, "TE" if i==0 else "TE/H", ha="center")
-
-    # WRs
-    wr_locs = [(30, mid+6.5), (70, mid+6.5), (60, mid+14)]
-    for i in range(min(wr, 3)):
-        x, y = wr_locs[i]
-        ax.scatter(x, y, s=220, edgecolors="black", facecolors="white")
-        ax.text(x, y+2.5, "WR", ha="center")
-    extra = wr - 3
-    for i in range(max(0, extra)):
-        x, y = 64 + i*3, mid+12 - i*2
-        ax.scatter(x, y, s=220, edgecolors="black", facecolors="white")
-        ax.text(x, y+2.5, "WR", ha="center")
-
-    # RBs
-    rb_locs = [(50, 16), (46, 18)]
-    for i in range(min(rb, 2)):
-        x, y = rb_locs[i]
-        ax.scatter(x, y, s=220, edgecolors="black", facecolors="white")
-        ax.text(x, y-2.5, "RB" if i == 0 else "FB", ha="center", va="top")
-
-    ax.text(50, 52, f"{tag} PERSONNEL  (WR {wr} / TE {te} / RB {rb})",
-            ha="center", fontsize=12, fontweight="bold")
-    return fig
 
 def explosive_mask(df):
     pt = df["PlayType"].astype(str).str.lower()
@@ -186,7 +127,7 @@ st.title(APP_TITLE)
 
 page = st.sidebar.radio(
     "Navigation",
-    ["Data Entry", "Play Log", "Analytics", "Personnel Explorer", "Admin"],
+    ["Data Entry", "Play Log", "Analytics", "Formation Explorer", "Admin"],
     index=0
 )
 
@@ -219,8 +160,7 @@ if page == "Data Entry":
 
         colh1, colh2, colh3 = st.columns(3)
         hash_mark = colh1.selectbox("Hash", ["Left","Middle","Right"])
-        personnel = colh2.text_input("Personnel (e.g., 11, 12, 21, 10)", value="11")
-        formation = colh3.text_input("Formation/Set (e.g., Trips Rt, Ace)", value="")
+        formation = colh3.number_input("Formation/Set (e.g., Trips Rt, Ace)", value = 0, min_value=0, max_value=10)
 
         play_type = st.selectbox("Play Type", ["Run","Pass","Screen","RPO","Play Action","Special Teams","Other"])
         result_yards = st.number_input("Result (yards gained/lost)", min_value=-50, max_value=99, value=0)
@@ -237,8 +177,8 @@ if page == "Data Entry":
                 "Timestamp": datetime.now().isoformat(timespec="seconds"),
                 "Game": game, "Opponent": opponent, "TeamSide": team_side,
                 "Quarter": int(quarter), "Down": int(down), "Distance": float(distance),
-                "YardLine": int(yardline), "Hash": hash_mark, "Personnel": personnel.strip(),
-                "Formation": formation.strip(), "PlayType": play_type,
+                "YardLine": int(yardline), "Hash": hash_mark,
+                "Formation": int(formation), "PlayType": play_type,
                 "ResultYards": float(result_yards), "Success": bool(success_calc),
                 "Notes": notes.strip()
             }
@@ -325,27 +265,28 @@ elif page == "Analytics":
             st.metric("Explosive Play Rate", f"{expl*100:.1f}%")
 
 # =========================
-# PAGE: PERSONNEL EXPLORER
+# PAGE: Formation EXPLORER
 # =========================
-elif page == "Personnel Explorer":
-    st.subheader("🧩 Personnel Explorer")
+elif page == "Formation Explorer":
+    st.subheader("🧩 Formation Explorer")
     if df.empty:
         st.info("No plays yet.")
     else:
         side = st.selectbox("Team Side", ["Offense","Defense"])
-        options = sorted(df.loc[df["TeamSide"]==side, "Personnel"].dropna().astype(str).unique().tolist())
+        options = sorted(df.loc[df["TeamSide"]==side, "Formation"].dropna().astype(str).unique().tolist())
         if not options:
-            st.info(f"No personnel logged for {side}.")
+            st.info(f"No Formation logged for {side}.")
         else:
-            personnel = st.selectbox("Personnel", options, index=0)
-
-            # diagram
-            st.write("**Diagram**")
-            fig = draw_personnel_diagram(personnel)
-            st.pyplot(fig, use_container_width=True)
+            formation = st.selectbox("Formation", options, index=0)
+            formation_str = str(formation).replace(" ", "_").lower()
+            img_path = os.path.join(f'/Users/rjw/Documents/football/hudl_drawings/formation_{formation_str}.png')
+            if os.path.exists(img_path):
+                st.image(img_path, caption=f"Formation: {formation}", use_container_width=True)
+            else:
+                st.warning(f"No image found for formation '{formation}'. Expected at: {img_path}")
 
             # tendencies
-            sub = df[(df["TeamSide"]==side) & (df["Personnel"].astype(str)==str(personnel))].copy()
+            sub = df[(df["TeamSide"]==side) & (df["Formation"].astype(str)==str(formation))].copy()
             if sub.empty:
                 st.info("No plays for this grouping yet.")
             else:
@@ -382,6 +323,8 @@ elif page == "Personnel Explorer":
                     by_down["SuccessRate"] = (by_down["SuccessRate"]*100).round(1)
                 st.write("**By Down**")
                 st.dataframe(by_down, use_container_width=True)
+
+
 
 # =========================
 # PAGE: ADMIN
