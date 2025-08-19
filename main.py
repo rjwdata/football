@@ -279,7 +279,7 @@ elif page == "Formation Explorer":
         else:
             formation = st.selectbox("Formation", options, index=0)
             formation_str = str(formation).replace(" ", "_").lower()
-            img_path = os.path.join(f'/Users/rjw/Documents/football/hudl_drawings/formation_{formation_str}.png')
+            img_path = os.path.join("hudl_drawings", f"formation_{formation_str}.png")
             if os.path.exists(img_path):
                 st.image(img_path, caption=f"Formation: {formation}", use_container_width=True)
             else:
